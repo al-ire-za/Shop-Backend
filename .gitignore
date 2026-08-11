@@ -1,0 +1,24 @@
+# Python bytecode / extra files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Database (دیتابیس محلی نباید commit شود)
+db.sqlite3
+db.sqlite3-journal
+
+# Environment variables (تنظیمات کلیدهای سری و حساس)
+.env
+
+# Media & Static files (عکس‌ها و فایل‌های آپلودی کاربران)
+media/
+staticfiles/
+
+# IDE / Editor settings
+.vscode/
+.idea/
