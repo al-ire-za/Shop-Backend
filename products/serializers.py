@@ -30,6 +30,7 @@ class ProductSerializer(serializers.ModelSerializer):
     attributes = ProductAttributeSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     final_price = serializers.ReadOnlyField()
+    rating = serializers.ReadOnlyField()
 
     class Meta:
         model = Product

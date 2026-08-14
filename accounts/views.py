@@ -6,7 +6,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from orders.models import Cart, CartItem
 from .models import Address
-from .serializers import RegisterSerializer, UserSerializer
+from rest_framework.generics import CreateAPIView
+from .serializers import RegisterSerializer, UserSerializer, AddressSerializer
 
 User = get_user_model()
 
@@ -53,3 +54,12 @@ class RegisterView(APIView):
             user = serializer.save()
             return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class AddAddressView(CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddressSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

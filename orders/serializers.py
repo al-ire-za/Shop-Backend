@@ -1,35 +1,49 @@
 from rest_framework import serializers
 from .models import Cart, CartItem, Order, OrderItem
-from products.serializers import ProductSerializer
+from products.models import Product
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    product_id = serializers.IntegerField(write_only=True)
+    id = serializers.IntegerField(source='product.id', read_only=True)
+    name = serializers.CharField(source='product.name', read_only=True)
+    price = serializers.IntegerField(source='product.price', read_only=True)
+    discount_percent = serializers.IntegerField(source='product.discount_percent', read_only=True)
+    final_price = serializers.IntegerField(source='product.final_price', read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'product_id', 'quantity']
+        fields = ['id', 'name', 'price', 'discount_percent', 'final_price', 'image', 'quantity']
+
+    def get_image(self, obj):
+        if obj.product.image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.product.image.url) if request else obj.product.image.url
+        return ''
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
-    total_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ['id', 'items', 'total_price', 'updated_at']
+        fields = ['id', 'items', 'updated_at']
 
-    def get_total_price(self, obj):
-        return sum(item.product.final_price * item.quantity for item in obj.items.all())
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'price', 'quantity']
+        fields = ['product', 'price', 'quantity']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = OrderItemSerializer(many=True, write_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'full_name', 'phone_number', 'address', 'total_price', 'status', 'items', 'created_at']
-        read_only_fields = ['id', 'user', 'status', 'created_at']
+        fields = ['id', 'full_name', 'phone_number', 'address', 'total_price', 'status', 'items', 'created_at']
+        read_only_fields = ['id', 'status', 'created_at']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        order = Order.objects.create(**validated_data)
+        for item in items_data:
+            OrderItem.objects.create(order=order, **item)
+        return order
