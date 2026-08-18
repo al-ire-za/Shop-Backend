@@ -74,3 +74,4 @@ class CreateOrderView(generics.CreateAPIView):
                 cart.items.all().delete()
             except Cart.DoesNotExist:
                 pass
+
