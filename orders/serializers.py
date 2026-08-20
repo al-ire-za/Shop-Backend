@@ -33,13 +33,29 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['product', 'price', 'quantity']
 
+class OrderItemDetailSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product', 'product_name', 'product_image', 'price', 'quantity']
+
+    def get_product_image(self, obj):
+        if obj.product and obj.product.image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.product.image.url) if request else obj.product.image.url
+        return ''
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, write_only=True)
+    order_items = OrderItemDetailSerializer(source='items', many=True, read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'full_name', 'phone_number', 'address', 'total_price', 'status', 'items', 'created_at']
-        read_only_fields = ['id', 'status', 'created_at']
+        fields = ['id', 'full_name', 'phone_number', 'address', 'total_price', 'status', 'status_display', 'items', 'order_items', 'created_at']
+        read_only_fields = ['id', 'status', 'status_display', 'created_at']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])

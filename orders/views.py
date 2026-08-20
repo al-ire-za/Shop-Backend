@@ -75,3 +75,52 @@ class CreateOrderView(generics.CreateAPIView):
             except Cart.DoesNotExist:
                 pass
 
+
+class UserOrdersListView(generics.ListAPIView):
+    """
+    دریافت لیست سفارش‌های کاربر لاگین شده
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).prefetch_related('items__product').order_by('-created_at')
+
+
+class ApplyCouponView(APIView):
+    """
+    بررسی و اعمال کد تخفیف
+    """
+    VALID_COUPONS = {
+        'OFF10': {'percent': 10, 'min_amount': 0, 'max_discount': 500000},
+        'OFF20': {'percent': 20, 'min_amount': 0, 'max_discount': 1000000},
+        'WELCOME': {'percent': 15, 'min_amount': 0, 'max_discount': 750000},
+        'SPRING': {'percent': 25, 'min_amount': 1000000, 'max_discount': 2000000},
+    }
+
+    def post(self, request):
+        code = str(request.data.get('code', '')).strip().upper()
+        if not code:
+            return Response({'message': 'لطفاً کد تخفیف را وارد کنید.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if code not in self.VALID_COUPONS:
+            return Response({'message': 'کد تخفیف وارد شده نامعتبر یا منقضی شده است.'}, status=status.HTTP_404_NOT_FOUND)
+
+        coupon_info = self.VALID_COUPONS[code]
+        # در صورتی که مبلغ سفارش هم ارسال شده بود، مبلغ تخفیف محاسبه می‌شود
+        total_price = int(request.data.get('total_price', 0))
+        if total_price > 0:
+            calc_discount = int(total_price * (coupon_info['percent'] / 100))
+            discount_amount = min(calc_discount, coupon_info['max_discount'])
+        else:
+            # تخفیف پیش‌فرض تخمینی یا درصدی
+            discount_amount = coupon_info['percent'] * 10000
+
+        return Response({
+            'valid': True,
+            'code': code,
+            'percent': coupon_info['percent'],
+            'discount_amount': discount_amount,
+            'message': f'کد تخفیف {coupon_info["percent"]} درصدی با موفقیت اعمال گردید.'
+        }, status=status.HTTP_200_OK)
+
